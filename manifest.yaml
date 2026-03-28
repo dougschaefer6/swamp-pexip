@@ -1,0 +1,17 @@
+manifestVersion: 1
+name: "@dougschaefer/pexip-infinity"
+version: "2026.03.27.2"
+description: "Pexip Infinity video conferencing platform management — conferences, VMRs, aliases, participants, node deployment, Teams/Google/Skype integrations, OTJ (One-Touch-Join) calendar connectors, and platform administration. Supports v39 API."
+repository: https://dev.azure.com/AmericanSound/ASEI/_git/asei-swamp-catalog
+labels:
+  - pexip
+  - video
+  - conferencing
+  - teams
+  - msp
+models:
+  - pexip/conference.ts
+  - pexip/deploy.ts
+  - pexip/integration.ts
+  - pexip/otj.ts
+  - pexip/platform.ts
