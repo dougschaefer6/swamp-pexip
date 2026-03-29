@@ -10,6 +10,17 @@ import {
   STATUS_BASE,
 } from "./_client.ts";
 
+/**
+ * Pexip Infinity conference and VMR lifecycle management.
+ *
+ * Covers Virtual Meeting Rooms (VMRs), conference aliases, call routing rules,
+ * auto-participants, active conference control (mute, lock, layout, transfer),
+ * and conference/participant history with CDR records.
+ *
+ * Docs: https://docs.pexip.com/admin/admin_intro.htm
+ * API: https://docs.pexip.com/api_manage/api_configuration.htm
+ */
+
 // --- Resource schemas ---
 
 const VmrSchema = z
@@ -184,8 +195,12 @@ export const model = {
             }),
           )
           .describe("SIP/H.323/WebRTC aliases for this VMR"),
-        hostPin: z.string().optional().describe("Host PIN (digits)"),
-        guestPin: z.string().optional().describe("Guest PIN (digits)"),
+        hostPin: z.string().optional().meta({ sensitive: true }).describe(
+          "Host PIN (digits)",
+        ),
+        guestPin: z.string().optional().meta({ sensitive: true }).describe(
+          "Guest PIN (digits)",
+        ),
         allowGuests: z
           .boolean()
           .optional()
@@ -263,6 +278,132 @@ export const model = {
 
         context.logger.info("Deleted VMR {name}", { name: args.name });
         return { dataHandles: [] };
+      },
+    },
+
+    updateVmr: {
+      description:
+        "Update an existing VMR's properties (PIN, guest access, participant limit, service type, layout, etc.).",
+      arguments: z.object({
+        name: z.string().describe("VMR name to update"),
+        pin: z.string().optional().meta({ sensitive: true }).describe(
+          "New host PIN",
+        ),
+        guestPin: z
+          .string()
+          .optional()
+          .meta({ sensitive: true })
+          .describe("New guest PIN (empty string to remove)"),
+        allowGuests: z.boolean().optional().describe("Allow guest access"),
+        participantLimit: z
+          .number()
+          .optional()
+          .describe("Maximum participants (0 for unlimited)"),
+        hostView: z
+          .enum([
+            "1:0",
+            "1:7",
+            "1:21",
+            "2:21",
+            "1:33",
+            "teams",
+            "ac",
+            "2x2",
+            "3x3",
+            "4x4",
+            "5x5",
+          ])
+          .optional()
+          .describe("Default host layout"),
+        guestView: z
+          .enum([
+            "1:0",
+            "1:7",
+            "1:21",
+            "2:21",
+            "1:33",
+            "teams",
+            "ac",
+            "2x2",
+            "3x3",
+            "4x4",
+            "5x5",
+          ])
+          .optional()
+          .describe("Default guest layout"),
+        enableChat: z
+          .enum(["yes", "no", "default"])
+          .optional()
+          .describe("Chat availability"),
+        guestsCanPresent: z
+          .boolean()
+          .optional()
+          .describe("Allow guests to share content"),
+        muteAllGuests: z
+          .boolean()
+          .optional()
+          .describe("Mute all guests on join"),
+        tag: z.string().optional().describe("VMR tag for filtering"),
+        description: z.string().optional().describe("VMR description"),
+        cryptoMode: z
+          .enum(["besteffort", "on", "off"])
+          .optional()
+          .describe("Media encryption mode"),
+        liveCaptionsEnabled: z
+          .boolean()
+          .optional()
+          .describe("Enable live captions"),
+      }),
+      execute: async (args, context) => {
+        const g = context.globalArgs;
+        const vmrs = await pexipListAll(`${CONFIG_BASE}/conference/`, g, {
+          name: args.name,
+        });
+        const vmr = vmrs.find((v) => v.name === args.name);
+        if (!vmr) throw new Error(`VMR not found: ${args.name}`);
+
+        const vmrId = extractId(vmr.resource_uri as string);
+        const body: Record<string, unknown> = {};
+        if (args.pin !== undefined) body.pin = args.pin;
+        if (args.guestPin !== undefined) body.guest_pin = args.guestPin;
+        if (args.allowGuests !== undefined) {
+          body.allow_guests = args.allowGuests;
+        }
+        if (args.participantLimit !== undefined) {
+          body.participant_limit = args.participantLimit;
+        }
+        if (args.hostView !== undefined) body.host_view = args.hostView;
+        if (args.guestView !== undefined) body.guest_view = args.guestView;
+        if (args.enableChat !== undefined) body.enable_chat = args.enableChat;
+        if (args.guestsCanPresent !== undefined) {
+          body.guests_can_present = args.guestsCanPresent;
+        }
+        if (args.muteAllGuests !== undefined) {
+          body.mute_all_guests = args.muteAllGuests;
+        }
+        if (args.tag !== undefined) body.tag = args.tag;
+        if (args.description !== undefined) body.description = args.description;
+        if (args.cryptoMode !== undefined) body.crypto_mode = args.cryptoMode;
+        if (args.liveCaptionsEnabled !== undefined) {
+          body.live_captions_enabled = args.liveCaptionsEnabled;
+        }
+
+        await pexipApi(`${CONFIG_BASE}/conference/${vmrId}/`, g, {
+          method: "PATCH",
+          body,
+        });
+
+        context.logger.info("Updated VMR '{name}': {fields}", {
+          name: args.name,
+          fields: Object.keys(body).join(", "),
+        });
+
+        return {
+          data: {
+            attributes: { name: args.name, updated: Object.keys(body) },
+            name: `vmr-${sanitizeId(args.name)}`,
+          },
+        };
       },
     },
 

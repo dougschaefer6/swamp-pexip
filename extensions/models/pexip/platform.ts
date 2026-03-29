@@ -9,6 +9,16 @@ import {
   STATUS_BASE,
 } from "./_client.ts";
 
+/**
+ * Pexip Infinity platform administration — global system configuration,
+ * worker node management, DNS/NTP servers, system locations, license status,
+ * alarms, backups, upgrades, diagnostic snapshots, and cloud bursting.
+ *
+ * Docs: https://docs.pexip.com/admin/admin_intro.htm
+ * Status API: https://docs.pexip.com/api_manage/api_status.htm
+ * Command API: https://docs.pexip.com/api_manage/api_command.htm
+ */
+
 // --- Resource schemas ---
 
 const SystemConfigSchema = z

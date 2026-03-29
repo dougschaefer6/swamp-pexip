@@ -1,16 +1,30 @@
 manifestVersion: 1
 name: "@dougschaefer/pexip-infinity"
-version: "2026.03.29.1"
-description: "Pexip Infinity video conferencing platform management — conferences, VMRs, aliases, participants, node deployment, Teams/Google/Skype integrations, OTJ (One-Touch-Join) calendar connectors, and platform administration. Supports v39 API."
+version: "2026.03.29.3"
+description: "Pexip Infinity v39 management and development — conference lifecycle, node deployment, platform administration, integrations, policy server development, event-driven automation, branding, client API, auth/RBAC, network infrastructure, licensing, recording, diagnostics, and Exchange calendar connectors."
 repository: https://github.com/dougschaefer6/swamp-pexip
 labels:
   - pexip
   - video
   - conferencing
   - teams
+  - policy
+  - sdk
+  - webrtc
+  - branding
 models:
   - pexip/conference.ts
   - pexip/deploy.ts
   - pexip/integration.ts
   - pexip/otj.ts
   - pexip/platform.ts
+  - pexip/policy.ts
+  - pexip/branding.ts
+  - pexip/eventsink.ts
+  - pexip/client.ts
+  - pexip/auth.ts
+  - pexip/network.ts
+  - pexip/license.ts
+  - pexip/recording.ts
+  - pexip/diagnostics.ts
+  - pexip/exchange.ts

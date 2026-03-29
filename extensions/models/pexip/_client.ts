@@ -21,7 +21,7 @@ export const PexipGlobalArgsSchema = z.object({
     .string()
     .default("admin")
     .describe("Admin username for the management node"),
-  password: z.string().describe(
+  password: z.string().meta({ sensitive: true }).describe(
     "Admin password. Use: ${{ vault.get(<vault>, pexip-admin-password) }}",
   ),
   verifySsl: z

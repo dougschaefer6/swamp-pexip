@@ -541,6 +541,7 @@ export const model = {
         adminPassword: z
           .string()
           .optional()
+          .meta({ sensitive: true })
           .describe("Admin password (if not using SSH keys)"),
         osDiskType: z
           .enum(["StandardSSD_LRS", "Premium_LRS"])

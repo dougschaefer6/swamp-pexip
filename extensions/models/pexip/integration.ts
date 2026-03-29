@@ -8,6 +8,14 @@ import {
   sanitizeId,
 } from "./_client.ts";
 
+/**
+ * Pexip Infinity platform integrations — TLS certificates, SIP registrations,
+ * LDAP directory sources, Microsoft Teams connectors, identity providers,
+ * TURN servers, registered devices, CA certificates, and CSR management.
+ *
+ * Docs: https://docs.pexip.com/admin/admin_intro.htm
+ */
+
 // --- Resource schemas ---
 
 const EventSinkSchema = z
