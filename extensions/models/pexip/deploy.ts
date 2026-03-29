@@ -1,4 +1,4 @@
-import { z } from "npm:zod@4";
+import { z } from "npm:zod@4.3.6";
 import {
   az,
   AzureGlobalArgsSchema,
@@ -310,7 +310,6 @@ export const model = {
           .describe("Which VHD(s) to download"),
         storageAccount: z
           .string()
-          .default("aseiimagestorage")
           .describe("Destination storage account name"),
         containerName: z
           .string()
@@ -397,7 +396,7 @@ export const model = {
         vhdUri: z
           .string()
           .describe(
-            "Full URI to the VHD blob (e.g., https://aseiimagestorage.blob.core.windows.net/pexip-images/pexip-mgmt-v39.vhd)",
+            "Full URI to the VHD blob (e.g., https://yourstorageaccount.blob.core.windows.net/pexip-images/pexip-mgmt-v39.vhd)",
           ),
         role: z
           .enum(["management", "conferencing"])
