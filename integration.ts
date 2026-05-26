@@ -131,7 +131,7 @@ const _SyslogSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-integration",
-  version: "2026.03.26.1",
+  version: "2026.05.26.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     eventSink: {

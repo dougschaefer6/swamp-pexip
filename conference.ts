@@ -130,7 +130,7 @@ const GatewayRuleSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-conference",
-  version: "2026.03.26.1",
+  version: "2026.05.26.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     vmr: {

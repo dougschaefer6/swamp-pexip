@@ -53,7 +53,7 @@ import {
  */
 export const model = {
   type: "@dougschaefer/pexip-recording",
-  version: "2026.03.29.1",
+  version: "2026.05.26.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

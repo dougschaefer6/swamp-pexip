@@ -127,7 +127,7 @@ const ParticipantPropertiesResponseSchema = z.object({
  */
 export const model = {
   type: "@dougschaefer/pexip-policy",
-  version: "2026.03.29.1",
+  version: "2026.05.26.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

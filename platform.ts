@@ -124,7 +124,7 @@ const BackupSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-platform",
-  version: "2026.03.26.1",
+  version: "2026.05.26.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     systemConfig: {
