@@ -28,9 +28,26 @@ import {
  *   - Log tools: https://github.com/pexip/pexip-log-tools
  */
 
+/**
+ * `@dougschaefer/pexip-diagnostics` model — operational telemetry and
+ * troubleshooting surface for Pexip Infinity over the v39 management
+ * API. healthCheck and getNodeHealth surface conferencing-node CPU,
+ * memory, media load, license consumption, and connectivity to
+ * dependencies. listAlarms returns active platform alarms with
+ * acknowledgement state. getCallHistory and getParticipantHistory
+ * pull CDR data; qualityReport summarizes packet loss, jitter, and
+ * codec selection across a time window for capacity and quality
+ * analysis. Log-level methods (listLogLevels, setLogLevel) tune
+ * per-component verbosity for support escalations; tuneables methods
+ * (listTuneables, setTuneable) reach the platform-internal knobs
+ * Pexip support recommends during incidents. takeSnapshot bundles a
+ * diagnostic snapshot for upload to Pexip support. Mutations on
+ * tuneables and log levels affect live nodes — coordinate with
+ * change windows.
+ */
 export const model = {
   type: "@dougschaefer/pexip-diagnostics",
-  version: "2026.03.29.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

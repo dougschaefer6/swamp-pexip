@@ -21,9 +21,23 @@ import {
  * Docs: https://docs.pexip.com/admin/auth_overview.htm
  */
 
+/**
+ * `@dougschaefer/pexip-auth` model — authentication, RBAC, and access
+ * control on Pexip Infinity via the v39 management API.
+ * getAuthConfig and updateAuthConfig drive the platform-wide
+ * AuthenticationConfig (OIDC, SAML, LDAP, local password policy, MFA).
+ * Role and role-mapping CRUD wires identity-provider groups to
+ * internal roles for admin and end-user access. End-user CRUD
+ * manages the local Infinity user directory used for client login
+ * and meeting hosting. Allowlist methods control administrator-
+ * source IP restrictions for the management web interface.
+ * inventory aggregates the auth posture in one read for compliance
+ * and drift checks. Mutations apply to the live management node
+ * and take effect on operator login immediately.
+ */
 export const model = {
   type: "@dougschaefer/pexip-auth",
-  version: "2026.03.29.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

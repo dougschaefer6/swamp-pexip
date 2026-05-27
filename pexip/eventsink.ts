@@ -74,9 +74,25 @@ const ParticipantEventSchema = z.object({
   }).passthrough(),
 }).passthrough();
 
+/**
+ * `@dougschaefer/pexip-eventsink` model — event-sink configuration and
+ * delivery validation for Pexip Infinity over the v39 management API.
+ * Event sinks are the outbound webhook channel Infinity uses to push
+ * conference, participant, and node events to external systems
+ * (SIEM, recording, analytics, recording compliance). list/get
+ * enumerate configured sinks, create/update/delete manage them
+ * including URL, bearer auth, mutual TLS, and event-type filters.
+ * validateEvent inspects an incoming event payload schema against
+ * what Infinity actually emits in the targeted version, useful when
+ * building consumers. testDelivery fires a synthetic event at a sink
+ * to verify network reachability, TLS, and auth without waiting for
+ * real conference activity. Mutations rewire production event flow,
+ * so coordinate with downstream consumers before changing URLs or
+ * filter sets.
+ */
 export const model = {
   type: "@dougschaefer/pexip-eventsink",
-  version: "2026.03.29.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

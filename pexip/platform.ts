@@ -124,7 +124,7 @@ const BackupSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-platform",
-  version: "2026.05.26.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     systemConfig: {
@@ -791,6 +791,60 @@ export const model = {
           );
           handles.push(handle);
         }
+        return { dataHandles: handles };
+      },
+    },
+
+    sync: {
+      description:
+        "Refresh node status, license state, and active alarms so CEL expressions reflect current platform health. Equivalent to running getNodeStatus + getLicenseStatus + listAlarms in one call. Safe to run on a schedule.",
+      arguments: z.object({}),
+      execute: async (_args, context) => {
+        const g = context.globalArgs;
+        const handles = [];
+
+        // Worker node status (runtime load/calls)
+        const statuses = await pexipListAll(`${STATUS_BASE}/worker_vm/`, g);
+        for (const status of statuses) {
+          handles.push(
+            await context.writeResource(
+              "workerNode",
+              sanitizeId((status.name as string) + "-status"),
+              status,
+            ),
+          );
+        }
+
+        // License status
+        try {
+          const license = (await pexipApi(
+            `${STATUS_BASE}/licensing/`,
+            g,
+          )) as Record<string, unknown>;
+          handles.push(
+            await context.writeResource("licenseStatus", "current", license),
+          );
+        } catch {
+          /* non-fatal — license endpoint may not exist on all builds */
+        }
+
+        // Active alarms
+        const alarms = await pexipListAll(`${STATUS_BASE}/alarm/`, g);
+        for (const alarm of alarms) {
+          handles.push(
+            await context.writeResource(
+              "alarm",
+              sanitizeId(`${alarm.name}-${alarm.id}`),
+              alarm,
+            ),
+          );
+        }
+
+        context.logger.info(
+          "Sync: {nodes} nodes, {alarms} alarms refreshed",
+          { nodes: statuses.length, alarms: alarms.length },
+        );
+
         return { dataHandles: handles };
       },
     },

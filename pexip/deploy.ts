@@ -6,6 +6,11 @@ import {
   sanitizeInstanceName,
 } from "../azure/_helpers.ts";
 
+// Helper — export type alias so the checks block can type-check globalArgs
+type AzureGlobalArgs = typeof AzureGlobalArgsSchema extends z.ZodType<infer T>
+  ? T
+  : never;
+
 /**
  * Pexip Infinity Azure Deployment Model
  *
@@ -124,9 +129,25 @@ const PEXIP_SPECS = {
   ],
 } as const;
 
+/**
+ * `@dougschaefer/pexip-deploy` model — Pexip Infinity node lifecycle
+ * on Azure, combining VHD-image management with VM provisioning sized
+ * against Pexip's published capacity rules. getCapacity returns the
+ * vCPU/RAM/storage/bandwidth requirements for management,
+ * conferencing, and proxying roles; validateNodeSpec checks a
+ * proposed VM size against those rules before provisioning.
+ * downloadVhd and createImageFromVhd pull the Pexip-supplied VHD from
+ * blob storage and register it as a managed image, listImages
+ * enumerates available versions. deployNode creates a role-tagged
+ * VM from that image with correct disk, NIC, NSG, and accelerated-
+ * networking settings, then startNode/stopNode/resizeNode/deleteNode
+ * cover day-2 ops. snapshotNode takes a managed-disk snapshot for
+ * pre-upgrade safety. All mutations call `az` and modify live Azure
+ * resources backing the production conferencing platform.
+ */
 export const model = {
   type: "@dougschaefer/pexip-deploy",
-  version: "2026.03.26.1",
+  version: "2026.05.27.1",
   globalArguments: AzureGlobalArgsSchema,
   resources: {
     vm: {
@@ -902,6 +923,39 @@ export const model = {
         });
 
         return { dataHandles: [] };
+      },
+    },
+  },
+
+  checks: {
+    "azure-subscription-reachable": {
+      description:
+        "Verify the Azure subscription is reachable and the active az session can read VM state before running destructive node operations.",
+      labels: ["live"],
+      appliesTo: ["deleteNode", "resizeNode", "stopNode", "deployNode"],
+      execute: async (context: { globalArgs: AzureGlobalArgs }) => {
+        try {
+          // A lightweight read of the subscription to verify auth and reachability.
+          await az(
+            [
+              "account",
+              "show",
+              "--subscription",
+              context.globalArgs.subscriptionId,
+            ],
+            context.globalArgs.subscriptionId,
+          );
+          return { pass: true };
+        } catch (err) {
+          return {
+            pass: false,
+            errors: [
+              `Azure subscription ${context.globalArgs.subscriptionId} not reachable from active az session: ${
+                String(err)
+              }`,
+            ],
+          };
+        }
       },
     },
   },

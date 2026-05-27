@@ -21,9 +21,23 @@ import {
  * against allocated capacity.
  */
 
+/**
+ * `@dougschaefer/pexip-license` model — license inventory and
+ * compliance for Pexip Infinity over the v39 management API. list
+ * enumerates installed license entitlements (port counts, expiration,
+ * feature flags). getStatus returns live consumption against
+ * allocated capacity for ports, recordings, and streaming.
+ * listRequests shows pending license-request envelopes generated from
+ * the management node and not yet fulfilled by Pexip. checkCompliance
+ * compares installed entitlements and current usage against expected
+ * thresholds — useful for renewal forecasting and over-subscription
+ * alerts. inventory rolls all of the above into one read for audit.
+ * All methods are read-only; license installation still happens by
+ * uploading a license file through the management UI.
+ */
 export const model = {
   type: "@dougschaefer/pexip-license",
-  version: "2026.03.29.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

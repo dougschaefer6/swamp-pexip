@@ -17,9 +17,26 @@ import {
  * call routing rules, and system locations.
  */
 
+/**
+ * `@dougschaefer/pexip-network` model — network-edge configuration
+ * referenced by VMRs, call-routing rules, and system locations on
+ * Pexip Infinity via the v39 management API. SIP-proxy CRUD
+ * (listSipProxies, createSipProxy, deleteSipProxy) and SIP-credential
+ * CRUD manage outbound SIP trunking to ITSPs and on-prem PBXs. MSSIP-
+ * proxy methods cover the Skype/Lync federation edge. Teams-proxy
+ * methods configure the path to Microsoft Teams via the Cloud Video
+ * Interop bridge. STUN-server methods set the NAT-traversal pool used
+ * by WebRTC and ICE. SMTP-server methods feed outbound mail for
+ * meeting invites and alerts. Static-route methods (listStaticRoutes,
+ * createStaticRoute) configure platform-managed routes on
+ * conferencing nodes. inventory aggregates the network posture for
+ * audit. Mutations propagate to conferencing nodes on the next
+ * configuration sync and change how outbound calls route — verify
+ * with affected sites.
+ */
 export const model = {
   type: "@dougschaefer/pexip-network",
-  version: "2026.03.29.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

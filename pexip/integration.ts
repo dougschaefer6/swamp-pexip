@@ -26,7 +26,7 @@ const EventSinkSchema = z
     url: z.string(),
     description: z.string().optional(),
     username: z.string().optional(),
-    password: z.string().optional(),
+    password: z.string().optional().meta({ sensitive: true }),
     verify_tls: z.boolean().optional(),
     event_api_version: z.number().optional(),
     use_bulk_mode: z.boolean().optional(),
@@ -94,7 +94,7 @@ const _SnmpSchema = z
   .object({
     id: z.number().optional(),
     resource_uri: z.string().optional(),
-    community_string: z.string().optional(),
+    community_string: z.string().optional().meta({ sensitive: true }),
     allowed_subnets: z.array(z.string()).optional(),
     enabled: z.boolean().optional(),
   })
@@ -111,9 +111,27 @@ const _SyslogSchema = z
   })
   .passthrough();
 
+/**
+ * `@dougschaefer/pexip-integration` model — cross-system integration
+ * objects on Pexip Infinity via the v39 management API. Covers the
+ * grab-bag of platform plumbing that wires Infinity to identity,
+ * telephony, and content systems. Event-sink methods configure
+ * outbound webhooks for conference/participant events. Certificate
+ * upload manages the TLS material used for SIP, MSSIP, and HTTPS
+ * (admin and event endpoints). SIP-registration CRUD drives outbound
+ * SIP registrations to ITSPs and IP-PBXs. LDAP-source and syncLdap
+ * pull users and groups from directory services for end-user
+ * authentication. Teams-connector helpers inspect the Cloud Video
+ * Interop bridge into Microsoft Teams. Identity-provider and IdP-
+ * group methods cover SSO wiring; user-group methods cover
+ * Infinity-internal grouping. Media-library, playlist, and
+ * branding-package listings overlap with the pexip-branding model
+ * for cross-referencing assets in workflows. Mutations rewire live
+ * platform behavior, so verify with the affected dependent systems.
+ */
 export const model = {
   type: "@dougschaefer/pexip-integration",
-  version: "2026.03.26.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     eventSink: {
@@ -191,6 +209,7 @@ export const model = {
         password: z
           .string()
           .optional()
+          .meta({ sensitive: true })
           .describe("Password for HTTP basic auth"),
         verifyTls: z.boolean().optional().default(true).describe("Verify TLS"),
         apiVersion: z
@@ -290,7 +309,9 @@ export const model = {
       arguments: z.object({
         name: z.string().describe("Certificate name"),
         certificate: z.string().describe("PEM-encoded certificate"),
-        privateKey: z.string().describe("PEM-encoded private key"),
+        privateKey: z.string().meta({ sensitive: true }).describe(
+          "PEM-encoded private key",
+        ),
         intermediateCertificates: z
           .string()
           .optional()
@@ -364,6 +385,7 @@ export const model = {
         password: z
           .string()
           .optional()
+          .meta({ sensitive: true })
           .describe("SIP authentication password"),
         transport: z
           .enum(["tcp", "tls", "udp"])
@@ -974,6 +996,7 @@ export const model = {
           .string()
           .optional()
           .default("public")
+          .meta({ sensitive: true })
           .describe("SNMP community string"),
         allowedSubnets: z
           .array(z.string())

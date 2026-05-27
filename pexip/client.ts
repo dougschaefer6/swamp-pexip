@@ -100,9 +100,25 @@ async function clientApi(
   return { status: resp.status, data };
 }
 
+/**
+ * `@dougschaefer/pexip-client` model — Pexip Infinity client API
+ * (conference participation surface), distinct from the v39 management
+ * API used by the other pexip models. Token methods request, refresh,
+ * and release the per-conference token that authorizes all subsequent
+ * client calls. getParticipants enumerates everyone currently in a
+ * VMR. Floor-control and moderation methods (lock, muteGuests,
+ * setLayout, admitParticipant, spotlightParticipant, disconnect)
+ * exercise the same primitives the Pexip web app uses, so they take
+ * effect on the live conference. dial places outbound legs (SIP,
+ * H.323, MSSIP, RTMP) into a running VMR, sendMessage posts chat,
+ * listBreakouts inspects breakout-room state, and setOverlayText
+ * burns a banner into the layout. Use this when automating from the
+ * participant side (call bots, recorders, breakout managers); use
+ * pexip-conference for VMR provisioning and admin-side control.
+ */
 export const model = {
   type: "@dougschaefer/pexip-client",
-  version: "2026.03.29.1",
+  version: "2026.05.27.1",
   globalArguments: ClientGlobalArgsSchema,
 
   methods: {

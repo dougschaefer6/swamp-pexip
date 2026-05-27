@@ -48,7 +48,7 @@ import {
  */
 export const model = {
   type: "@dougschaefer/pexip-exchange",
-  version: "2026.05.26.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
 
   methods: {

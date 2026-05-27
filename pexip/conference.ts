@@ -30,8 +30,8 @@ const VmrSchema = z
     name: z.string(),
     description: z.string().optional(),
     aliases: z.array(z.record(z.string(), z.unknown())).optional(),
-    host_pin: z.string().optional(),
-    guest_pin: z.string().optional(),
+    host_pin: z.string().optional().meta({ sensitive: true }),
+    guest_pin: z.string().optional().meta({ sensitive: true }),
     allow_guests: z.boolean().optional(),
     participant_limit: z.number().optional(),
     service_type: z.string().optional(),
@@ -113,6 +113,77 @@ const GatewayRuleSchema = z
   })
   .passthrough();
 
+const ConferenceAliasSchema = z
+  .object({
+    id: z.number().optional(),
+    resource_uri: z.string().optional(),
+    alias: z.string(),
+    conference: z.string().optional(),
+    description: z.string().optional(),
+  })
+  .passthrough();
+
+const AutoParticipantSchema = z
+  .object({
+    id: z.number().optional(),
+    resource_uri: z.string().optional(),
+    conference: z.string().optional(),
+    remote_alias: z.string().optional(),
+    protocol: z.string().optional(),
+    role: z.string().optional(),
+    streaming: z.boolean().optional(),
+  })
+  .passthrough();
+
+const ParticipantHistorySchema = z
+  .object({
+    id: z.number().optional(),
+    resource_uri: z.string().optional(),
+    conference: z.string().optional(),
+    display_name: z.string().optional(),
+    protocol: z.string().optional(),
+    start_time: z.string().optional(),
+    end_time: z.string().optional(),
+    duration: z.number().optional(),
+    disconnect_reason: z.string().optional(),
+  })
+  .passthrough();
+
+const MediaStreamSchema = z
+  .object({
+    id: z.number().optional(),
+    resource_uri: z.string().optional(),
+    participant: z.string().optional(),
+    stream_type: z.string().optional(),
+    codec: z.string().optional(),
+    start_bitrate: z.number().optional(),
+    end_bitrate: z.number().optional(),
+    packet_loss: z.number().optional(),
+    jitter: z.number().optional(),
+  })
+  .passthrough();
+
+const ScheduledConferenceSchema = z
+  .object({
+    id: z.number().optional(),
+    resource_uri: z.string().optional(),
+    name: z.string().optional(),
+    start_time: z.string().optional(),
+    end_time: z.string().optional(),
+    tag: z.string().optional(),
+  })
+  .passthrough();
+
+const RecurringConferenceSchema = z
+  .object({
+    id: z.number().optional(),
+    resource_uri: z.string().optional(),
+    name: z.string().optional(),
+    recurrence: z.string().optional(),
+    tag: z.string().optional(),
+  })
+  .passthrough();
+
 /**
  * `@dougschaefer/pexip-conference` model — VMR and call-control surface
  * for Pexip Infinity over the v39 management API. VMR CRUD and listing
@@ -130,7 +201,7 @@ const GatewayRuleSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-conference",
-  version: "2026.05.26.1",
+  version: "2026.05.27.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     vmr: {
@@ -160,6 +231,43 @@ export const model = {
     gatewayRule: {
       description: "Gateway routing rule (outbound/interop)",
       schema: GatewayRuleSchema,
+      lifetime: "infinite" as const,
+      garbageCollection: 10,
+    },
+    conferenceAlias: {
+      description: "Conference alias (SIP/H.323/WebRTC alias mapped to a VMR)",
+      schema: ConferenceAliasSchema,
+      lifetime: "infinite" as const,
+      garbageCollection: 20,
+    },
+    autoParticipant: {
+      description:
+        "Automatically dialed participant (RTMP, recording, always-on endpoint)",
+      schema: AutoParticipantSchema,
+      lifetime: "infinite" as const,
+      garbageCollection: 20,
+    },
+    participantHistory: {
+      description: "Historical participant call detail record",
+      schema: ParticipantHistorySchema,
+      lifetime: "7d" as const,
+      garbageCollection: 100,
+    },
+    mediaStream: {
+      description: "Media stream statistics for a historical participant",
+      schema: MediaStreamSchema,
+      lifetime: "7d" as const,
+      garbageCollection: 200,
+    },
+    scheduledConference: {
+      description: "Time-bounded scheduled conference",
+      schema: ScheduledConferenceSchema,
+      lifetime: "infinite" as const,
+      garbageCollection: 20,
+    },
+    recurringConference: {
+      description: "Recurring conference definition",
+      schema: RecurringConferenceSchema,
       lifetime: "infinite" as const,
       garbageCollection: 10,
     },
@@ -849,7 +957,16 @@ export const model = {
         context.logger.info("Found {count} conference aliases", {
           count: aliases.length,
         });
-        return { dataHandles: [] };
+        const handles = [];
+        for (const a of aliases) {
+          const handle = await context.writeResource(
+            "conferenceAlias",
+            sanitizeId(`alias-${a.alias || a.id}`),
+            a,
+          );
+          handles.push(handle);
+        }
+        return { dataHandles: handles };
       },
     },
 
@@ -909,7 +1026,16 @@ export const model = {
         context.logger.info("Found {count} auto-dial participants", {
           count: participants.length,
         });
-        return { dataHandles: [] };
+        const handles = [];
+        for (const p of participants) {
+          const handle = await context.writeResource(
+            "autoParticipant",
+            sanitizeId(`ap-${p.remote_alias || p.id}`),
+            p,
+          );
+          handles.push(handle);
+        }
+        return { dataHandles: handles };
       },
     },
 
@@ -1015,7 +1141,16 @@ export const model = {
         context.logger.info("Found {count} participant history records", {
           count: history.length,
         });
-        return { dataHandles: [] };
+        const handles = [];
+        for (const record of history) {
+          const handle = await context.writeResource(
+            "participantHistory",
+            sanitizeId(`ph-${record.id}`),
+            record,
+          );
+          handles.push(handle);
+        }
+        return { dataHandles: handles };
       },
     },
 
@@ -1035,7 +1170,16 @@ export const model = {
           count: streams.length,
           pid: args.participantId,
         });
-        return { dataHandles: [] };
+        const handles = [];
+        for (const stream of streams) {
+          const handle = await context.writeResource(
+            "mediaStream",
+            sanitizeId(`ms-${args.participantId}-${stream.id}`),
+            stream,
+          );
+          handles.push(handle);
+        }
+        return { dataHandles: handles };
       },
     },
 
@@ -1053,7 +1197,16 @@ export const model = {
         context.logger.info("Found {count} scheduled conferences", {
           count: confs.length,
         });
-        return { dataHandles: [] };
+        const handles = [];
+        for (const conf of confs) {
+          const handle = await context.writeResource(
+            "scheduledConference",
+            sanitizeId(`sched-${conf.name || conf.id}`),
+            conf,
+          );
+          handles.push(handle);
+        }
+        return { dataHandles: handles };
       },
     },
 
@@ -1069,7 +1222,16 @@ export const model = {
         context.logger.info("Found {count} recurring conferences", {
           count: confs.length,
         });
-        return { dataHandles: [] };
+        const handles = [];
+        for (const conf of confs) {
+          const handle = await context.writeResource(
+            "recurringConference",
+            sanitizeId(`recur-${conf.name || conf.id}`),
+            conf,
+          );
+          handles.push(handle);
+        }
+        return { dataHandles: handles };
       },
     },
   },
