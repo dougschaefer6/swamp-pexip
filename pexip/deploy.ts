@@ -147,7 +147,7 @@ const PEXIP_SPECS = {
  */
 export const model = {
   type: "@dougschaefer/pexip-deploy",
-  version: "2026.05.27.1",
+  version: "2026.08.11.1",
   globalArguments: AzureGlobalArgsSchema,
   resources: {
     vm: {

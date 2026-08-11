@@ -131,7 +131,7 @@ const _SyslogSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-integration",
-  version: "2026.05.27.1",
+  version: "2026.08.11.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     eventSink: {
@@ -835,7 +835,7 @@ export const model = {
         address: z.string().describe("TURN server address"),
         port: z.number().optional().default(3478),
         username: z.string().optional(),
-        password: z.string().optional(),
+        password: z.string().optional().meta({ sensitive: true }),
         protocol: z.enum(["udp", "tcp", "tls"]).optional().default("udp"),
       }),
       execute: async (args, context) => {
@@ -944,7 +944,9 @@ export const model = {
         name: z.string().describe("Policy server name"),
         url: z.string().url().describe("Policy server URL (HTTPS recommended)"),
         username: z.string().optional().describe("HTTP basic auth username"),
-        password: z.string().optional().describe("HTTP basic auth password"),
+        password: z.string().optional().meta({ sensitive: true }).describe(
+          "HTTP basic auth password",
+        ),
       }),
       execute: async (args, context) => {
         const g = context.globalArgs;

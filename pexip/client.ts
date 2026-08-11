@@ -118,7 +118,7 @@ async function clientApi(
  */
 export const model = {
   type: "@dougschaefer/pexip-client",
-  version: "2026.05.27.1",
+  version: "2026.08.11.1",
   globalArguments: ClientGlobalArgsSchema,
 
   methods: {

@@ -201,7 +201,7 @@ const RecurringConferenceSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-conference",
-  version: "2026.05.27.1",
+  version: "2026.08.11.1",
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     vmr: {
