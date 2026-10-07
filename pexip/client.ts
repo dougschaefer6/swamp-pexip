@@ -1,5 +1,5 @@
 import { z } from "npm:zod@4.3.6";
-import { sanitizeId } from "./_client.ts";
+import { pexipMethods, sanitizeId } from "./_client.ts";
 
 /**
  * Pexip Infinity Client REST API — participant-level conference control.
@@ -118,10 +118,18 @@ async function clientApi(
  */
 export const model = {
   type: "@dougschaefer/pexip-client",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   globalArguments: ClientGlobalArgsSchema,
 
-  methods: {
+  methods: pexipMethods<z.infer<typeof ClientGlobalArgsSchema>>()({
     // --- Token management ---
 
     requestToken: {
@@ -825,5 +833,5 @@ export const model = {
         };
       },
     },
-  },
+  }),
 };

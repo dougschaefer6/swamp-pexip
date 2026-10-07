@@ -5,6 +5,7 @@ import {
   requireResourceGroup,
   sanitizeInstanceName,
 } from "../azure/_helpers.ts";
+import { pexipMethods } from "./_client.ts";
 
 // Helper — export type alias so the checks block can type-check globalArgs
 type AzureGlobalArgs = typeof AzureGlobalArgsSchema extends z.ZodType<infer T>
@@ -147,7 +148,15 @@ const PEXIP_SPECS = {
  */
 export const model = {
   type: "@dougschaefer/pexip-deploy",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   globalArguments: AzureGlobalArgsSchema,
   resources: {
     vm: {
@@ -163,7 +172,7 @@ export const model = {
       garbageCollection: 5,
     },
   },
-  methods: {
+  methods: pexipMethods<AzureGlobalArgs>()({
     // --- Image management ---
 
     getCapacity: {
@@ -488,11 +497,12 @@ export const model = {
           g.subscriptionId,
         )) as Array<Record<string, unknown>>;
 
-        if (args.filter) {
+        const filter = args.filter;
+        if (filter) {
           images = images.filter((img) =>
             (img.name as string)
               .toLowerCase()
-              .includes(args.filter.toLowerCase())
+              .includes(filter.toLowerCase())
           );
         }
 
@@ -694,11 +704,12 @@ export const model = {
           g.subscriptionId,
         )) as Array<Record<string, unknown>>;
 
-        if (args.filter) {
+        const filter = args.filter;
+        if (filter) {
           vms = vms.filter((vm) =>
             (vm.name as string)
               .toLowerCase()
-              .includes(args.filter.toLowerCase())
+              .includes(filter.toLowerCase())
           );
         }
 
@@ -925,7 +936,7 @@ export const model = {
         return { dataHandles: [] };
       },
     },
-  },
+  }),
 
   checks: {
     "azure-subscription-reachable": {

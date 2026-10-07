@@ -4,6 +4,7 @@ import {
   pexipApi,
   PexipGlobalArgsSchema,
   pexipListAll,
+  pexipMethods,
   sanitizeId,
 } from "./_client.ts";
 
@@ -92,10 +93,18 @@ const ParticipantEventSchema = z.object({
  */
 export const model = {
   type: "@dougschaefer/pexip-eventsink",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   globalArguments: PexipGlobalArgsSchema,
 
-  methods: {
+  methods: pexipMethods()({
     // --- Event sink management ---
 
     list: {
@@ -501,5 +510,5 @@ export const model = {
         };
       },
     },
-  },
+  }),
 };

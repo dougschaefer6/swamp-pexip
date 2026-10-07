@@ -5,6 +5,7 @@ import {
   pexipApi,
   PexipGlobalArgsSchema,
   pexipListAll,
+  pexipMethods,
   sanitizeId,
 } from "./_client.ts";
 
@@ -131,7 +132,15 @@ const _SyslogSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-integration",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     eventSink: {
@@ -166,7 +175,7 @@ export const model = {
       garbageCollection: 5,
     },
   },
-  methods: {
+  methods: pexipMethods()({
     // --- Event sinks ---
 
     listEventSinks: {
@@ -1062,5 +1071,5 @@ export const model = {
         return { dataHandles: [] };
       },
     },
-  },
+  }),
 };

@@ -5,6 +5,7 @@ import {
   pexipApi,
   PexipGlobalArgsSchema,
   pexipListAll,
+  pexipMethods,
   sanitizeId,
   STATUS_BASE,
 } from "./_client.ts";
@@ -124,7 +125,15 @@ const BackupSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-platform",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     systemConfig: {
@@ -164,7 +173,7 @@ export const model = {
       garbageCollection: 5,
     },
   },
-  methods: {
+  methods: pexipMethods()({
     // --- System configuration ---
 
     getConfig: {
@@ -934,5 +943,5 @@ export const model = {
         return { dataHandles: handles };
       },
     },
-  },
+  }),
 };

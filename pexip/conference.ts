@@ -6,6 +6,7 @@ import {
   pexipApi,
   PexipGlobalArgsSchema,
   pexipListAll,
+  pexipMethods,
   sanitizeId,
   STATUS_BASE,
 } from "./_client.ts";
@@ -201,7 +202,15 @@ const RecurringConferenceSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-conference",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   globalArguments: PexipGlobalArgsSchema,
   resources: {
     vmr: {
@@ -272,7 +281,7 @@ export const model = {
       garbageCollection: 10,
     },
   },
-  methods: {
+  methods: pexipMethods()({
     // --- VMR management ---
 
     listVmrs: {
@@ -1234,5 +1243,5 @@ export const model = {
         return { dataHandles: handles };
       },
     },
-  },
+  }),
 };

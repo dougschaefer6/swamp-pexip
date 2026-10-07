@@ -4,6 +4,7 @@ import {
   pexipApi,
   PexipGlobalArgsSchema,
   pexipListAll,
+  pexipMethods,
   sanitizeId,
 } from "./_client.ts";
 
@@ -127,10 +128,18 @@ const ParticipantPropertiesResponseSchema = z.object({
  */
 export const model = {
   type: "@dougschaefer/pexip-policy",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   globalArguments: PexipGlobalArgsSchema,
 
-  methods: {
+  methods: pexipMethods()({
     // --- Policy server management ---
 
     listServers: {
@@ -733,7 +742,7 @@ export const model = {
               errors: result.success ? null : result.error.issues.map((i) => ({
                 path: i.path.join("."),
                 message: i.message,
-                received: i.received,
+                received: "received" in i ? i.received : undefined,
               })),
               parsedResponse: parsed,
             },
@@ -775,5 +784,5 @@ export const model = {
         };
       },
     },
-  },
+  }),
 };

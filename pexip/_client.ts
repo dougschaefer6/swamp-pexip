@@ -32,6 +32,40 @@ export const PexipGlobalArgsSchema = z.object({
 
 export type PexipGlobalArgs = z.infer<typeof PexipGlobalArgsSchema>;
 
+/** The slice of the swamp method context these models use. */
+export interface PexipMethodContext<G> {
+  globalArgs: G;
+  logger: {
+    info: (message: string, props?: Record<string, unknown>) => void;
+    warning: (message: string, props?: Record<string, unknown>) => void;
+  };
+  writeResource: (
+    spec: string,
+    name: string,
+    data: Record<string, unknown>,
+  ) => Promise<unknown>;
+}
+
+export interface PexipMethod<A extends z.ZodType, G> {
+  description: string;
+  arguments: A;
+  execute: (
+    args: z.output<A>,
+    context: PexipMethodContext<G>,
+  ) => unknown; // a few validators return synchronously
+}
+
+/**
+ * Identity wrapper that gives each method's `execute` typed `args` (from
+ * its own arguments schema) and `context`. Curried so the global-args
+ * type is fixed while the per-method schemas are inferred.
+ */
+export function pexipMethods<G = PexipGlobalArgs>() {
+  return <A extends Record<string, z.ZodType>>(
+    methods: { [K in keyof A]: PexipMethod<A[K], G> },
+  ) => methods;
+}
+
 /**
  * Make a request to the Pexip Infinity management API.
  *

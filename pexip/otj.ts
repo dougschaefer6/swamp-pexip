@@ -5,6 +5,7 @@ import {
   pexipApi,
   PexipGlobalArgsSchema,
   pexipListAll,
+  pexipMethods,
   sanitizeId,
   STATUS_BASE,
 } from "./_client.ts";
@@ -95,6 +96,42 @@ const OtjMeetingStatusSchema = z
   .passthrough();
 
 /**
+ * OTJ regex meeting types. Infinity v41 introduced the RE2-engine regex
+ * type and deprecated the legacy one; existing legacy rules should be
+ * migrated. The API strings are not in the published docs — confirm
+ * them against a v41 node's mjx_meeting_processing_rule /schema/.
+ */
+export const LEGACY_REGEX_MEETING_TYPE = "regex";
+export const RE2_REGEX_MEETING_TYPE = "regex_re2";
+
+/** Teams join URLs moved hosts; custom match strings must follow. */
+const LEGACY_TEAMS_HOST = "teams.microsoft.com";
+const CURRENT_TEAMS_HOST = "teams.cloud.microsoft";
+
+export function isLegacyRegexRule(rule: Record<string, unknown>): boolean {
+  return rule.meeting_type === LEGACY_REGEX_MEETING_TYPE;
+}
+
+/** Deprecation warnings for a rule about to be created; empty when clean. */
+export function meetingRuleWarnings(
+  meetingType: string,
+  matchString: string,
+): string[] {
+  const warnings: string[] = [];
+  if (meetingType === LEGACY_REGEX_MEETING_TYPE) {
+    warnings.push(
+      `Meeting type '${LEGACY_REGEX_MEETING_TYPE}' is deprecated as of Pexip Infinity v41; use '${RE2_REGEX_MEETING_TYPE}' instead`,
+    );
+  }
+  if (matchString.includes(LEGACY_TEAMS_HOST)) {
+    warnings.push(
+      `Match string references ${LEGACY_TEAMS_HOST}; Teams join links now use ${CURRENT_TEAMS_HOST}, so update the pattern to match both`,
+    );
+  }
+  return warnings;
+}
+
+/**
  * `@dougschaefer/pexip-otj` model — One-Touch Join surface for Pexip
  * Infinity over the v39 management API. OTJ is the calendar-driven
  * room-system join path that turns Exchange, Graph, and Google
@@ -114,8 +151,16 @@ const OtjMeetingStatusSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-otj",
-  version: "2026.08.11.1",
+  version: "2026.10.07.1",
   globalArguments: PexipGlobalArgsSchema,
+  upgrades: [
+    {
+      toVersion: "2026.10.07.1",
+      description:
+        "Regex RE2 OTJ meeting type, legacy Regex deprecation warnings; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+  ],
   resources: {
     endpoint: {
       description: "OTJ endpoint (room system with calendar integration)",
@@ -154,7 +199,7 @@ export const model = {
       garbageCollection: 50,
     },
   },
-  methods: {
+  methods: pexipMethods()({
     // --- Endpoints ---
 
     listEndpoints: {
@@ -369,8 +414,12 @@ export const model = {
     listMeetingRules: {
       description:
         "List OTJ meeting processing rules (URI pattern matching for dial strings).",
-      arguments: z.object({}),
-      execute: async (_args, context) => {
+      arguments: z.object({
+        legacyRegexOnly: z.boolean().optional().default(false).describe(
+          "Only return rules still using the deprecated legacy Regex meeting type",
+        ),
+      }),
+      execute: async (args, context) => {
         const g = context.globalArgs;
         const rules = await pexipListAll(
           `${CONFIG_BASE}/mjx_meeting_processing_rule/`,
@@ -379,8 +428,15 @@ export const model = {
         context.logger.info("Found {count} meeting processing rules", {
           count: rules.length,
         });
+        const legacy = rules.filter(isLegacyRegexRule);
+        if (legacy.length > 0) {
+          context.logger.warning(
+            "{count} meeting processing rules use the deprecated Regex meeting type; migrate them to Regex RE2",
+            { count: legacy.length },
+          );
+        }
         const handles = [];
-        for (const r of rules) {
+        for (const r of args.legacyRegexOnly ? legacy : rules) {
           handles.push(
             await context.writeResource(
               "meetingRule",
@@ -413,6 +469,9 @@ export const model = {
             "zoom",
             "gotomeeting",
             "other",
+            RE2_REGEX_MEETING_TYPE,
+            // Deprecated in v41; accepted so existing setups keep working.
+            LEGACY_REGEX_MEETING_TYPE,
           ])
           .optional()
           .default("pexip"),
@@ -420,6 +479,11 @@ export const model = {
       }),
       execute: async (args, context) => {
         const g = context.globalArgs;
+        for (
+          const w of meetingRuleWarnings(args.meetingType, args.matchString)
+        ) {
+          context.logger.warning(w);
+        }
         const body: Record<string, unknown> = {
           name: args.name,
           priority: args.priority,
@@ -679,5 +743,5 @@ export const model = {
         return { dataHandles: handles };
       },
     },
-  },
+  }),
 };
