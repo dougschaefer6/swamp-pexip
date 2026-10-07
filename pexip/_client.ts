@@ -15,7 +15,7 @@ import { z } from "npm:zod@4.3.6";
 
 export const PexipGlobalArgsSchema = z.object({
   host: z.string().describe(
-    "Pexip management node FQDN or IP address (e.g., 10.100.0.10)",
+    "Pexip management node FQDN or IP address (e.g., 192.0.2.10)",
   ),
   username: z
     .string()

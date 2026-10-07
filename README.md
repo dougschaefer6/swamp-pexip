@@ -1,19 +1,24 @@
 # @dougschaefer/pexip-infinity
 
 A [Swamp](https://github.com/systeminit/swamp) extension that manages Pexip
-Infinity video conferencing infrastructure through the management node API. Five
-model types cover the full platform lifecycle across 113 methods: conference
-management (VMRs, aliases, auto-participants, call routing, and live conference
-control), node deployment and capacity planning via Azure CLI, platform
-integrations (Microsoft Teams CVI, SIP trunks, LDAP, TURN, identity providers,
-and external policy servers), One-Touch-Join calendar connectors for Exchange,
-Google Workspace, and Office 365, and platform administration including system
-configuration, licensing, alarms, backups, TLS certificates, and diagnostic
-snapshots.
+Infinity video conferencing infrastructure through the management node API.
+Fifteen model types cover the full platform lifecycle across 227 methods:
+conference management (VMRs, aliases, auto-participants, call routing, and live
+conference control), node deployment and capacity planning via Azure CLI,
+platform integrations (Microsoft Teams CVI, SIP trunks, LDAP, TURN, identity
+providers, and external policy servers), One-Touch-Join calendar connectors for
+Exchange, Google Workspace, and Office 365, and platform administration
+including system configuration, licensing, alarms, backups, TLS certificates,
+and diagnostic snapshots.
 
 ## Models / Methods
 
-### pexip-conference (25 methods)
+The tables below cover the five core models. The other ten (`pexip-policy`,
+`pexip-branding`, `pexip-eventsink`, `pexip-client`, `pexip-auth`,
+`pexip-network`, `pexip-license`, `pexip-recording`, `pexip-diagnostics`,
+`pexip-exchange`) document their methods in their source files.
+
+### pexip-conference (26 methods)
 
 Conference and VMR lifecycle, live conference control, call routing, and
 history.
@@ -109,40 +114,50 @@ providers, media, branding, and monitoring.
 | `configureSnmp`              | Configure SNMP monitoring with community string and allowed subnets                                 |
 | `configureSyslog`            | Configure remote syslog forwarding with server address, port, and transport                         |
 
-### pexip-otj (16 methods)
+### pexip-otj (18 methods)
 
 One-Touch-Join calendar connectors: endpoints, groups, profiles, meeting rules,
 calendar deployments, and status.
 
-| Method                        | Description                                                                                                                                                                                                                                        |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `listEndpoints`               | List OTJ endpoints (room systems with calendar integration), optionally filtered by group                                                                                                                                                          |
-| `createEndpoint`              | Register a room system for OTJ with alias, calendar ID, protocol, and optional direct IP for Cisco xAPI push                                                                                                                                       |
-| `deleteEndpoint`              | Remove an OTJ endpoint by name                                                                                                                                                                                                                     |
-| `listEndpointGroups`          | List OTJ endpoint groups (logical collections of rooms)                                                                                                                                                                                            |
-| `createEndpointGroup`         | Create an endpoint group with optional integration profile binding                                                                                                                                                                                 |
-| `listProfiles`                | List OTJ integration profiles                                                                                                                                                                                                                      |
-| `createProfile`               | Create an OTJ integration profile with system location binding                                                                                                                                                                                     |
-| `listMeetingRules`            | List meeting processing rules (URI pattern matching for dial strings); warns when rules still use the deprecated legacy Regex type, and `legacyRegexOnly: true` returns only those rules                                                           |
-| `createMeetingRule`           | Create a meeting processing rule with regex match, priority, and meeting type (Pexip, Teams, Google Meet, Webex, Zoom, Regex RE2, etc.); warns on the deprecated legacy Regex type and on match strings that still reference `teams.microsoft.com` |
-| `listCalendarDeployments`     | List calendar system deployments across Exchange, O365 Graph, and Google                                                                                                                                                                           |
-| `configureGraphDeployment`    | Configure a Microsoft 365 Graph API calendar deployment                                                                                                                                                                                            |
-| `configureExchangeDeployment` | Configure an Exchange on-premises calendar deployment                                                                                                                                                                                              |
-| `configureGoogleDeployment`   | Configure a Google Workspace calendar deployment                                                                                                                                                                                                   |
-| `getEndpointStatus`           | Get OTJ endpoint status (last poll time, errors)                                                                                                                                                                                                   |
-| `listMeetings`                | List active OTJ meetings (dial buttons pushed to endpoints)                                                                                                                                                                                        |
-| `inventory`                   | Full OTJ inventory: profiles, groups, endpoints, and meeting processing rules in one call                                                                                                                                                          |
+| Method                        | Description                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `listEndpoints`               | List OTJ endpoints (room systems with calendar integration), optionally filtered by group                                                                                                                                                                                                                                                                                                                             |
+| `createEndpoint`              | Register a room system for OTJ with alias, calendar ID, protocol, and optional direct IP for Cisco xAPI push                                                                                                                                                                                                                                                                                                          |
+| `deleteEndpoint`              | Remove an OTJ endpoint by name                                                                                                                                                                                                                                                                                                                                                                                        |
+| `listEndpointGroups`          | List OTJ endpoint groups (logical collections of rooms)                                                                                                                                                                                                                                                                                                                                                               |
+| `createEndpointGroup`         | Create an endpoint group with optional integration profile binding                                                                                                                                                                                                                                                                                                                                                    |
+| `listProfiles`                | List OTJ integration profiles                                                                                                                                                                                                                                                                                                                                                                                         |
+| `createProfile`               | Create an OTJ integration profile with system location binding                                                                                                                                                                                                                                                                                                                                                        |
+| `listMeetingRules`            | List meeting processing rules (URI pattern matching for dial strings); warns when rules still use the deprecated legacy Regex type, and `legacyRegexOnly: true` returns only those rules                                                                                                                                                                                                                              |
+| `createMeetingRule`           | Create a meeting processing rule bound to an OTJ profile (`profile`: name or `mjx_integration` resource URI), with match/replace strings, priority, `enabled`, `default_processing_enabled`, and a Pexip `meeting_type` (default `pexipinfinity`); old strings such as `pexip` or `google_meet` are accepted as aliases. Logs the deprecated legacy Regex type and Teams match strings that cover only one Teams host |
+| `updateMeetingRule`           | PATCH a rule in place (meeting type, enabled, match/replace strings, priority, profile, name); use it to migrate legacy `regex` rules to `regex_re2`                                                                                                                                                                                                                                                                  |
+| `deleteMeetingRule`           | Delete one rule by exact name (plus `id` when names collide); `dryRun: true` resolves the rule without deleting it                                                                                                                                                                                                                                                                                                    |
+| `listCalendarDeployments`     | List calendar system deployments across Exchange, O365 Graph, and Google                                                                                                                                                                                                                                                                                                                                              |
+| `configureGraphDeployment`    | Configure a Microsoft 365 Graph API calendar deployment                                                                                                                                                                                                                                                                                                                                                               |
+| `configureExchangeDeployment` | Configure an Exchange on-premises calendar deployment                                                                                                                                                                                                                                                                                                                                                                 |
+| `configureGoogleDeployment`   | Configure a Google Workspace calendar deployment                                                                                                                                                                                                                                                                                                                                                                      |
+| `getEndpointStatus`           | Get OTJ endpoint status (last poll time, errors)                                                                                                                                                                                                                                                                                                                                                                      |
+| `listMeetings`                | List active OTJ meetings (dial buttons pushed to endpoints)                                                                                                                                                                                                                                                                                                                                                           |
+| `inventory`                   | Full OTJ inventory: profiles, groups, endpoints, and meeting processing rules in one call                                                                                                                                                                                                                                                                                                                             |
 
-Pexip Infinity v41 introduced the `regex_re2` (Regex RE2) meeting type and
-deprecated the legacy `regex` type. `createMeetingRule` still accepts `regex` so
-existing setups keep working, but it logs a deprecation warning; migrate
-existing rules to `regex_re2`. Teams join links have also moved from
-`teams.microsoft.com` to `teams.cloud.microsoft`, so custom rules matching the
-old host need updating. The API strings for both regex types are not in Pexip's
-published docs, so confirm them against a v41 node's
-`mjx_meeting_processing_rule/schema/` before relying on them.
+Meeting types are the values Pexip's own Terraform provider validates for
+`meeting_type` (`pexipinfinity`, `pexipservice`, `teams`, `teamssipguestjoin`,
+`polyteamsbody`, `ciscoteamsbody`, `pexipserviceteamsbody`,
+`pexipinfinityteamsbody`, `hangouts`, `googlemeetsipguestjoin`, `s4b`,
+`polys4bbody`, `webex`, `zoom`, `gotomeeting`, `domain`, `regex`, `regex_re2`,
+`custom`); see
+[resource_infinity_mjx_meeting_processing_rule.go](https://github.com/pexip/terraform-provider-infinity/blob/master/internal/provider/resource_infinity_mjx_meeting_processing_rule.go)
+and the request model in
+[go-infinity-sdk](https://github.com/pexip/go-infinity-sdk/blob/master/config/mjx_meeting_processing_rule_model.go).
+Pexip Infinity v41 introduced Regex RE2 (`regex_re2`) and deprecated the legacy
+Regex type (`regex`). `createMeetingRule` still accepts `regex` so existing
+setups keep working, but it logs the deprecation; `listMeetingRules` flags
+legacy rules (`legacyRegex` on each rule, a `meetingRuleAudit` record with the
+count), and `updateMeetingRule` migrates them. Custom match strings are checked
+for both `teams.microsoft.com` and `teams.cloud.microsoft`, including the
+regex-escaped forms, and a pattern that covers only one of them is reported.
 
-### pexip-platform (24 methods)
+### pexip-platform (25 methods)
 
 System configuration, node management, DNS/NTP, licensing, alarms, backups, and
 platform commands.

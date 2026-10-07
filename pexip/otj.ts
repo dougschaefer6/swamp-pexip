@@ -3,6 +3,7 @@ import {
   CONFIG_BASE,
   extractId,
   pexipApi,
+  type PexipGlobalArgs,
   PexipGlobalArgsSchema,
   pexipListAll,
   pexipMethods,
@@ -72,6 +73,12 @@ const OtjMeetingProcessingRuleSchema = z
   })
   .passthrough();
 
+const MeetingRuleAuditSchema = z.object({
+  total: z.number(),
+  legacyRegexCount: z.number(),
+  legacyRegexRules: z.array(z.string()),
+});
+
 const CalendarDeploymentSchema = z
   .object({
     id: z.number().optional(),
@@ -96,23 +103,92 @@ const OtjMeetingStatusSchema = z
   .passthrough();
 
 /**
- * OTJ regex meeting types. Infinity v41 introduced the RE2-engine regex
- * type and deprecated the legacy one; existing legacy rules should be
- * migrated. The API strings are not in the published docs — confirm
- * them against a v41 node's mjx_meeting_processing_rule /schema/.
+ * OTJ meeting processing rule `meeting_type` values, exactly as Pexip's own
+ * Terraform provider validates them (`stringvalidator.OneOf` on
+ * `meeting_type` in
+ * https://github.com/pexip/terraform-provider-infinity/blob/master/internal/provider/resource_infinity_mjx_meeting_processing_rule.go).
+ * Infinity v41 introduced Regex RE2 (`regex_re2`) and deprecated the legacy
+ * Regex type (`regex`), which the API still accepts (docs.pexip.com, v41
+ * release notes).
  */
 export const LEGACY_REGEX_MEETING_TYPE = "regex";
 export const RE2_REGEX_MEETING_TYPE = "regex_re2";
 
-/** Teams join URLs moved hosts; custom match strings must follow. */
-const LEGACY_TEAMS_HOST = "teams.microsoft.com";
-const CURRENT_TEAMS_HOST = "teams.cloud.microsoft";
+export const MEETING_TYPES = [
+  "pexipinfinity",
+  "pexipservice",
+  "teams",
+  "teamssipguestjoin",
+  "polyteamsbody",
+  "ciscoteamsbody",
+  "pexipserviceteamsbody",
+  "pexipinfinityteamsbody",
+  "hangouts",
+  "googlemeetsipguestjoin",
+  "s4b",
+  "polys4bbody",
+  "webex",
+  "zoom",
+  "gotomeeting",
+  "domain",
+  LEGACY_REGEX_MEETING_TYPE,
+  RE2_REGEX_MEETING_TYPE,
+  "custom",
+] as const;
+
+export type MeetingType = (typeof MEETING_TYPES)[number];
+
+/**
+ * Strings earlier builds of this model offered. The API never accepted them
+ * (every one was a 400), so they are kept only as aliases for the real value.
+ */
+export const MEETING_TYPE_ALIASES: Record<string, MeetingType> = {
+  pexip: "pexipinfinity",
+  skype_for_business: "s4b",
+  google_meet: "hangouts",
+  google_meet_sip_guest_join: "googlemeetsipguestjoin",
+  other: "custom",
+};
+
+export const DEFAULT_MEETING_TYPE: MeetingType = "pexipinfinity";
+
+const MeetingTypeArg = z.enum([
+  ...MEETING_TYPES,
+  ...(Object.keys(MEETING_TYPE_ALIASES) as [string, ...string[]]),
+]);
+
+/** Map an accepted argument value (real or alias) to the API's value. */
+export function normalizeMeetingType(value: string): MeetingType {
+  if ((MEETING_TYPES as readonly string[]).includes(value)) {
+    return value as MeetingType;
+  }
+  const mapped = MEETING_TYPE_ALIASES[value];
+  if (!mapped) throw new Error(`Unknown OTJ meeting type: ${value}`);
+  return mapped;
+}
+
+/**
+ * Teams hosts checked in custom match strings. Both are checked; this does
+ * not assert which one current invitations use.
+ */
+const TEAMS_HOSTS = ["teams.microsoft.com", "teams.cloud.microsoft"];
 
 export function isLegacyRegexRule(rule: Record<string, unknown>): boolean {
   return rule.meeting_type === LEGACY_REGEX_MEETING_TYPE;
 }
 
-/** Deprecation warnings for a rule about to be created; empty when clean. */
+/**
+ * The Teams host a match string covers when it covers only one of the two. Regex
+ * escapes (`teams\.microsoft\.com`) are unescaped before the comparison.
+ */
+function teamsHostGap(matchString: string): string | undefined {
+  const plain = matchString.replace(/\\\./g, ".").toLowerCase();
+  const hit = TEAMS_HOSTS.filter((h) => plain.includes(h));
+  if (hit.length !== 1) return undefined;
+  return hit[0];
+}
+
+/** Deprecation warnings for a rule about to be written; empty when clean. */
 export function meetingRuleWarnings(
   meetingType: string,
   matchString: string,
@@ -123,12 +199,78 @@ export function meetingRuleWarnings(
       `Meeting type '${LEGACY_REGEX_MEETING_TYPE}' is deprecated as of Pexip Infinity v41; use '${RE2_REGEX_MEETING_TYPE}' instead`,
     );
   }
-  if (matchString.includes(LEGACY_TEAMS_HOST)) {
+  const host = teamsHostGap(matchString);
+  if (host) {
+    const other = TEAMS_HOSTS.find((h) => h !== host);
     warnings.push(
-      `Match string references ${LEGACY_TEAMS_HOST}; Teams join links now use ${CURRENT_TEAMS_HOST}, so update the pattern to match both`,
+      `Match string references ${host} but not ${other}; Teams links can use either host, so check whether the pattern should match both`,
     );
   }
   return warnings;
+}
+
+const MJX_INTEGRATION_PATH = `${CONFIG_BASE}/mjx_integration/`;
+const MEETING_RULE_PATH = `${CONFIG_BASE}/mjx_meeting_processing_rule/`;
+
+/**
+ * Resolve an OTJ profile to the resource URI the rule's `mjx_integration`
+ * field takes. A full `/api/admin/configuration/v1/mjx_integration/<id>/`
+ * URI passes through; anything else is looked up by exact profile name.
+ */
+export async function resolveProfileUri(
+  profile: string,
+  g: PexipGlobalArgs,
+): Promise<string> {
+  if (
+    /^\/api\/admin\/configuration\/v1\/mjx_integration\/\d+\/?$/.test(profile)
+  ) {
+    return profile.endsWith("/") ? profile : `${profile}/`;
+  }
+  const profiles = await pexipListAll(MJX_INTEGRATION_PATH, g, {
+    name: profile,
+  });
+  const match = profiles.find((p) => p.name === profile);
+  if (!match?.resource_uri) {
+    throw new Error(
+      `OTJ profile not found: '${profile}'. Pass an existing profile name (see listProfiles) or its full resource URI (${MJX_INTEGRATION_PATH}<id>/)`,
+    );
+  }
+  return match.resource_uri as string;
+}
+
+/** Find exactly one meeting rule by id or exact name; refuse ambiguity. */
+async function findMeetingRule(
+  g: PexipGlobalArgs,
+  name: string,
+  id?: number,
+): Promise<Record<string, unknown>> {
+  if (id !== undefined) {
+    const rule = (await pexipApi(`${MEETING_RULE_PATH}${id}/`, g)) as
+      | Record<string, unknown>
+      | null;
+    if (!rule) throw new Error(`Meeting processing rule not found: id ${id}`);
+    if (rule.name !== name) {
+      throw new Error(
+        `Meeting processing rule ${id} is named '${
+          String(rule.name)
+        }', not '${name}'; refusing to act on a mismatched rule`,
+      );
+    }
+    return rule;
+  }
+  const rules = await pexipListAll(MEETING_RULE_PATH, g, { name });
+  const matches = rules.filter((r) => r.name === name);
+  if (matches.length === 0) {
+    throw new Error(`Meeting processing rule not found: ${name}`);
+  }
+  if (matches.length > 1) {
+    throw new Error(
+      `${matches.length} meeting processing rules are named '${name}' (ids ${
+        matches.map((r) => extractId(r.resource_uri as string)).join(", ")
+      }); pass id to choose one`,
+    );
+  }
+  return matches[0];
 }
 
 /**
@@ -157,7 +299,7 @@ export const model = {
     {
       toVersion: "2026.10.07.1",
       description:
-        "Regex RE2 OTJ meeting type, legacy Regex deprecation warnings; globalArguments unchanged",
+        "Pexip meeting_type values, Regex RE2, mjx_integration on meeting rules, rule update/delete; globalArguments unchanged",
       upgradeAttributes: (old: Record<string, unknown>) => old,
     },
   ],
@@ -183,6 +325,13 @@ export const model = {
     meetingRule: {
       description: "OTJ meeting processing rule (URI pattern matching)",
       schema: OtjMeetingProcessingRuleSchema,
+      lifetime: "infinite" as const,
+      garbageCollection: 10,
+    },
+    meetingRuleAudit: {
+      description:
+        "Meeting-rule audit summary (total rules, legacy Regex count and names)",
+      schema: MeetingRuleAuditSchema,
       lifetime: "infinite" as const,
       garbageCollection: 10,
     },
@@ -413,7 +562,7 @@ export const model = {
 
     listMeetingRules: {
       description:
-        "List OTJ meeting processing rules (URI pattern matching for dial strings).",
+        "List OTJ meeting processing rules (URI pattern matching for dial strings). Each written rule carries a legacyRegex flag and its deprecationWarnings, and a meetingRuleAudit record holds the legacy-Regex count.",
       arguments: z.object({
         legacyRegexOnly: z.boolean().optional().default(false).describe(
           "Only return rules still using the deprecated legacy Regex meeting type",
@@ -421,17 +570,15 @@ export const model = {
       }),
       execute: async (args, context) => {
         const g = context.globalArgs;
-        const rules = await pexipListAll(
-          `${CONFIG_BASE}/mjx_meeting_processing_rule/`,
-          g,
-        );
+        const rules = await pexipListAll(MEETING_RULE_PATH, g);
         context.logger.info("Found {count} meeting processing rules", {
           count: rules.length,
         });
         const legacy = rules.filter(isLegacyRegexRule);
         if (legacy.length > 0) {
-          context.logger.warning(
-            "{count} meeting processing rules use the deprecated Regex meeting type; migrate them to Regex RE2",
+          // info, not warning: swamp hides warning-level lines without -v.
+          context.logger.info(
+            "{count} meeting processing rules use the deprecated Regex meeting type; migrate them to Regex RE2 with updateMeetingRule",
             { count: legacy.length },
           );
         }
@@ -441,65 +588,217 @@ export const model = {
             await context.writeResource(
               "meetingRule",
               sanitizeId(r.name as string),
-              r,
+              {
+                ...r,
+                legacyRegex: isLegacyRegexRule(r),
+                deprecationWarnings: meetingRuleWarnings(
+                  String(r.meeting_type ?? ""),
+                  String(r.match_string ?? ""),
+                ),
+              },
             ),
           );
         }
+        handles.push(
+          await context.writeResource("meetingRuleAudit", "meeting-rules", {
+            total: rules.length,
+            legacyRegexCount: legacy.length,
+            legacyRegexRules: legacy.map((r) => r.name as string),
+          }),
+        );
         return { dataHandles: handles };
       },
     },
 
     createMeetingRule: {
-      description: "Create an OTJ meeting processing rule.",
+      description:
+        "Create an OTJ meeting processing rule bound to an OTJ profile (mjx_integration).",
       arguments: z.object({
         name: z.string().describe("Rule name"),
-        priority: z.number().optional().default(100),
-        matchString: z.string().describe("Regex to match meeting URI"),
-        replaceString: z.string().optional().describe(
-          "Replacement for dial string",
+        profile: z.string().describe(
+          "OTJ profile the rule belongs to: the profile name (resolved via mjx_integration) or its full resource URI",
         ),
-        meetingType: z
-          .enum([
-            "pexip",
-            "teams",
-            "skype_for_business",
-            "google_meet",
-            "google_meet_sip_guest_join",
-            "webex",
-            "zoom",
-            "gotomeeting",
-            "other",
-            RE2_REGEX_MEETING_TYPE,
-            // Deprecated in v41; accepted so existing setups keep working.
-            LEGACY_REGEX_MEETING_TYPE,
-          ])
-          .optional()
-          .default("pexip"),
+        description: z.string().optional(),
+        priority: z.number().int().min(1).max(200).optional().default(100)
+          .describe("Rules are checked in ascending priority order (1-200)"),
+        matchString: z.string().optional().describe(
+          "Regex that finds the string to extract from the invitation",
+        ),
+        replaceString: z.string().optional().describe(
+          "Regex replacement that turns the match into the alias to dial",
+        ),
+        meetingType: MeetingTypeArg.optional().default(DEFAULT_MEETING_TYPE)
+          .describe(
+            "Pexip meeting_type value; the old pexip, skype_for_business, google_meet, google_meet_sip_guest_join and other strings are accepted as aliases",
+          ),
         enabled: z.boolean().optional().default(true),
+        defaultProcessingEnabled: z.boolean().optional().default(true)
+          .describe(
+            "Apply the default processing rules for this meeting type (default_processing_enabled)",
+          ),
       }),
       execute: async (args, context) => {
         const g = context.globalArgs;
-        for (
-          const w of meetingRuleWarnings(args.meetingType, args.matchString)
-        ) {
-          context.logger.warning(w);
+        const meetingType = normalizeMeetingType(args.meetingType);
+        if (meetingType !== args.meetingType) {
+          context.logger.info(
+            "Meeting type alias '{alias}' mapped to '{value}'",
+            { alias: args.meetingType, value: meetingType },
+          );
         }
+        const warnings = meetingRuleWarnings(
+          meetingType,
+          args.matchString ?? "",
+        );
+        for (const w of warnings) context.logger.info(w);
+
+        const mjxIntegration = await resolveProfileUri(args.profile, g);
+        // Field names from MjxMeetingProcessingRuleCreateRequest in
+        // https://github.com/pexip/go-infinity-sdk/blob/master/config/mjx_meeting_processing_rule_model.go
         const body: Record<string, unknown> = {
           name: args.name,
           priority: args.priority,
-          match_string: args.matchString,
-          meeting_type: args.meetingType,
-          enable: args.enabled,
+          meeting_type: meetingType,
+          mjx_integration: mjxIntegration,
+          enabled: args.enabled,
+          default_processing_enabled: args.defaultProcessingEnabled,
         };
+        if (args.description) body.description = args.description;
+        if (args.matchString) body.match_string = args.matchString;
         if (args.replaceString) body.replace_string = args.replaceString;
 
-        await pexipApi(`${CONFIG_BASE}/mjx_meeting_processing_rule/`, g, {
-          method: "POST",
-          body,
-        });
+        await pexipApi(MEETING_RULE_PATH, g, { method: "POST", body });
         context.logger.info("Created meeting processing rule {name}", {
           name: args.name,
         });
+        const handle = await context.writeResource(
+          "meetingRule",
+          sanitizeId(args.name),
+          {
+            ...body,
+            legacyRegex: meetingType === LEGACY_REGEX_MEETING_TYPE,
+            deprecationWarnings: warnings,
+          },
+        );
+        return { dataHandles: [handle] };
+      },
+    },
+
+    updateMeetingRule: {
+      description:
+        "Update an OTJ meeting processing rule in place (PATCH) — e.g. migrate a legacy Regex rule to Regex RE2.",
+      arguments: z.object({
+        name: z.string().describe("Exact name of the rule to update"),
+        id: z.number().int().optional().describe(
+          "Rule id, required when several rules share the name",
+        ),
+        newName: z.string().optional(),
+        description: z.string().optional(),
+        priority: z.number().int().min(1).max(200).optional(),
+        matchString: z.string().optional(),
+        replaceString: z.string().optional(),
+        meetingType: MeetingTypeArg.optional(),
+        enabled: z.boolean().optional(),
+        defaultProcessingEnabled: z.boolean().optional(),
+        profile: z.string().optional().describe(
+          "Move the rule to another OTJ profile (name or resource URI)",
+        ),
+      }),
+      execute: async (args, context) => {
+        const g = context.globalArgs;
+        const rule = await findMeetingRule(g, args.name, args.id);
+        const ruleId = extractId(rule.resource_uri as string);
+
+        const body: Record<string, unknown> = {};
+        if (args.newName !== undefined) body.name = args.newName;
+        if (args.description !== undefined) {
+          body.description = args.description;
+        }
+        if (args.priority !== undefined) body.priority = args.priority;
+        if (args.matchString !== undefined) {
+          body.match_string = args.matchString;
+        }
+        if (args.replaceString !== undefined) {
+          body.replace_string = args.replaceString;
+        }
+        if (args.meetingType !== undefined) {
+          body.meeting_type = normalizeMeetingType(args.meetingType);
+        }
+        if (args.enabled !== undefined) body.enabled = args.enabled;
+        if (args.defaultProcessingEnabled !== undefined) {
+          body.default_processing_enabled = args.defaultProcessingEnabled;
+        }
+        if (args.profile !== undefined) {
+          body.mjx_integration = await resolveProfileUri(args.profile, g);
+        }
+        if (Object.keys(body).length === 0) {
+          throw new Error("updateMeetingRule: no fields to update");
+        }
+
+        const merged = { ...rule, ...body };
+        const warnings = meetingRuleWarnings(
+          String(merged.meeting_type ?? ""),
+          String(merged.match_string ?? ""),
+        );
+        for (const w of warnings) context.logger.info(w);
+
+        await pexipApi(`${MEETING_RULE_PATH}${ruleId}/`, g, {
+          method: "PATCH",
+          body,
+        });
+        context.logger.info(
+          "Updated meeting processing rule '{name}': {fields}",
+          {
+            name: args.name,
+            fields: Object.keys(body).join(", "),
+          },
+        );
+        const handle = await context.writeResource(
+          "meetingRule",
+          sanitizeId(String(merged.name)),
+          {
+            ...merged,
+            legacyRegex: isLegacyRegexRule(merged),
+            deprecationWarnings: warnings,
+          },
+        );
+        return { dataHandles: [handle] };
+      },
+    },
+
+    deleteMeetingRule: {
+      description:
+        "Delete one OTJ meeting processing rule, matched by exact name (and id when names collide). dryRun resolves the rule without deleting it.",
+      arguments: z.object({
+        name: z.string().describe("Exact name of the rule to delete"),
+        id: z.number().int().optional().describe(
+          "Rule id, required when several rules share the name",
+        ),
+        dryRun: z.boolean().optional().default(false).describe(
+          "Resolve and report the rule without deleting it",
+        ),
+      }),
+      execute: async (args, context) => {
+        const g = context.globalArgs;
+        const rule = await findMeetingRule(g, args.name, args.id);
+        const ruleId = extractId(rule.resource_uri as string);
+        if (args.dryRun) {
+          context.logger.info(
+            "Dry run: would delete meeting processing rule '{name}' (id {id})",
+            { name: args.name, id: ruleId },
+          );
+          return { dataHandles: [] };
+        }
+        await pexipApi(`${MEETING_RULE_PATH}${ruleId}/`, g, {
+          method: "DELETE",
+        });
+        context.logger.info(
+          "Deleted meeting processing rule '{name}' (id {id})",
+          {
+            name: args.name,
+            id: ruleId,
+          },
+        );
         return { dataHandles: [] };
       },
     },
@@ -717,7 +1016,7 @@ export const model = {
         }
 
         const rules = await pexipListAll(
-          `${CONFIG_BASE}/mjx_meeting_processing_rule/`,
+          MEETING_RULE_PATH,
           g,
         );
         for (const r of rules) {
