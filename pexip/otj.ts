@@ -70,6 +70,10 @@ const OtjMeetingProcessingRuleSchema = z
     replace_string: z.string().optional(),
     meeting_type: z.string().optional(),
     enabled: z.boolean().optional(),
+    mjx_integration: z.string().optional(),
+    default_processing_enabled: z.boolean().optional(),
+    legacyRegex: z.boolean().optional(),
+    deprecationWarnings: z.array(z.string()).optional(),
   })
   .passthrough();
 
@@ -188,6 +192,25 @@ function teamsHostGap(matchString: string): string | undefined {
   return hit[0];
 }
 
+/**
+ * A rule as stored in the `meetingRule` spec: the API object plus the
+ * derived `legacyRegex` flag and deprecation warnings. Every method that
+ * writes a listed rule goes through this so the stored shape never depends
+ * on which method wrote it last.
+ */
+export function enrichMeetingRule(
+  rule: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...rule,
+    legacyRegex: isLegacyRegexRule(rule),
+    deprecationWarnings: meetingRuleWarnings(
+      String(rule.meeting_type ?? ""),
+      String(rule.match_string ?? ""),
+    ),
+  };
+}
+
 /** Deprecation warnings for a rule about to be written; empty when clean. */
 export function meetingRuleWarnings(
   meetingType: string,
@@ -293,13 +316,19 @@ async function findMeetingRule(
  */
 export const model = {
   type: "@dougschaefer/pexip-otj",
-  version: "2026.10.07.1",
+  version: "2026.10.08.1",
   globalArguments: PexipGlobalArgsSchema,
   upgrades: [
     {
       toVersion: "2026.10.07.1",
       description:
         "Pexip meeting_type values, Regex RE2, mjx_integration on meeting rules, rule update/delete; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+    {
+      toVersion: "2026.10.08.1",
+      description:
+        "Version bump alongside configureSyslog proto_format and log-category options; globalArguments unchanged",
       upgradeAttributes: (old: Record<string, unknown>) => old,
     },
   ],
@@ -588,14 +617,7 @@ export const model = {
             await context.writeResource(
               "meetingRule",
               sanitizeId(r.name as string),
-              {
-                ...r,
-                legacyRegex: isLegacyRegexRule(r),
-                deprecationWarnings: meetingRuleWarnings(
-                  String(r.meeting_type ?? ""),
-                  String(r.match_string ?? ""),
-                ),
-              },
+              enrichMeetingRule(r),
             ),
           );
         }
@@ -1024,7 +1046,7 @@ export const model = {
             await context.writeResource(
               "meetingRule",
               sanitizeId(r.name as string),
-              r,
+              enrichMeetingRule(r),
             ),
           );
         }

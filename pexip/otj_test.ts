@@ -6,6 +6,7 @@ import {
 } from "jsr:@std/assert@1";
 import {
   DEFAULT_MEETING_TYPE,
+  enrichMeetingRule,
   isLegacyRegexRule,
   LEGACY_REGEX_MEETING_TYPE,
   MEETING_TYPE_ALIASES,
@@ -131,7 +132,7 @@ function parseCreate(extra: Record<string, unknown>) {
 }
 
 Deno.test("model version ends its upgrade chain at the current version", () => {
-  assertEquals(model.version, "2026.10.07.1");
+  assertEquals(model.version, "2026.10.08.1");
   const last = model.upgrades[model.upgrades.length - 1];
   assertEquals(last.toVersion, model.version);
   const old = { host: "pexip.example.com" };
@@ -350,6 +351,51 @@ Deno.test("listMeetingRules reports, flags and filters legacy Regex rules", asyn
       legacy.writes.filter((w) => w.spec === "meetingRule").map((w) => w.name),
       ["old"],
     );
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("inventory and listMeetingRules store meeting rules in the same shape", async () => {
+  const rules = [
+    {
+      name: "old",
+      meeting_type: LEGACY_REGEX_MEETING_TYPE,
+      match_string: "teams\\.microsoft\\.com",
+    },
+    { name: "new", meeting_type: RE2_REGEX_MEETING_TYPE },
+  ];
+  const base = otjRoutes(rules);
+  const routes = (c: Captured) => {
+    const u = new URL(c.url);
+    if (
+      u.pathname.endsWith("/mjx_endpoint_group/") ||
+      u.pathname.endsWith("/mjx_endpoint/")
+    ) {
+      return { body: { meta: { total_count: 0 }, objects: [] } };
+    }
+    return base(c);
+  };
+  const calls: Captured[] = [];
+  const restore = mockFetch(calls, routes);
+  try {
+    const inv = fakeContext();
+    await methods.inventory.execute(
+      methods.inventory.arguments.parse({}),
+      inv.ctx,
+    );
+    const list = fakeContext();
+    await methods.listMeetingRules.execute(
+      methods.listMeetingRules.arguments.parse({}),
+      list.ctx,
+    );
+    const pick = (w: typeof inv.writes) =>
+      w.filter((x) => x.spec === "meetingRule").map((x) => [x.name, x.data]);
+    assertEquals(pick(inv.writes), pick(list.writes));
+    const old = inv.writes.find((w) => w.name === "old");
+    assertEquals(old?.data.legacyRegex, true);
+    assertEquals(old?.data, enrichMeetingRule(rules[0]));
+    assert((old?.data.deprecationWarnings as string[]).length === 2);
   } finally {
     restore();
   }

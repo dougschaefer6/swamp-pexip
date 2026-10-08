@@ -75,44 +75,44 @@ Azure VM provisioning, image management, capacity planning, and node lifecycle.
 Platform integrations: event sinks, TLS, SIP, LDAP, Teams CVI, TURN, identity
 providers, media, branding, and monitoring.
 
-| Method                       | Description                                                                                         |
-| ---------------------------- | --------------------------------------------------------------------------------------------------- |
-| `listEventSinks`             | List configured event sinks for conference/participant event forwarding                             |
-| `createEventSink`            | Create an HTTP(S) event sink with optional basic auth, TLS verification, API version, and bulk mode |
-| `deleteEventSink`            | Delete an event sink by name                                                                        |
-| `listCertificates`           | List all TLS certificates on the platform                                                           |
-| `uploadCertificate`          | Upload a PEM certificate with private key and optional intermediate chain                           |
-| `listSipRegistrations`       | List SIP registrations (trunks to external SBC/proxy)                                               |
-| `createSipRegistration`      | Create a SIP registration with proxy address, transport protocol, and port                          |
-| `listLdapSources`            | List LDAP/AD directory sources for contact sync                                                     |
-| `listTeamsConnectors`        | List Microsoft Teams connector configurations                                                       |
-| `syncLdap`                   | Trigger an immediate LDAP directory sync (normally runs daily at 01:00 UTC)                         |
-| `listIdentityProviders`      | List SAML/OIDC identity providers for conference participant SSO                                    |
-| `createIdentityProvider`     | Configure an identity provider for participant authentication                                       |
-| `deleteIdentityProvider`     | Remove an identity provider configuration                                                           |
-| `listIdentityProviderGroups` | List identity provider groups controlling IdP user access to services                               |
-| `listUserGroups`             | List user groups for access control                                                                 |
-| `listMediaLibrary`           | List media library entries (hold music, IVR audio, playback service content)                        |
-| `listPlaylists`              | List media playlists                                                                                |
-| `createPlaylist`             | Create a media playlist for playback service or IVR                                                 |
-| `listBrandingPackages`       | List web app branding packages for per-client meeting experiences                                   |
-| `listWebAppPaths`            | List web app path aliases (custom URLs for branded join pages)                                      |
-| `createWebAppPath`           | Create a web app path alias (e.g., /meet/clientname) with optional branding                         |
-| `listCsrs`                   | List certificate signing requests                                                                   |
-| `createCsr`                  | Generate a CSR on the management node with common name and SANs (private key stays on-box)          |
-| `listAzureTenants`           | List Azure/Entra tenant configurations for Teams CVI                                                |
-| `createAzureTenant`          | Configure an Azure/Entra tenant for Teams CVI integration                                           |
-| `listTurnServers`            | List TURN server configurations for NAT traversal                                                   |
-| `createTurnServer`           | Configure a TURN server with address, port, credentials, and transport protocol                     |
-| `listRegisteredDevices`      | List all registered device aliases                                                                  |
-| `listIvrThemes`              | List IVR themes (branding, hold music, prompts)                                                     |
-| `listCaCertificates`         | List trusted CA certificates                                                                        |
-| `uploadCaCertificate`        | Upload a trusted CA certificate in PEM format                                                       |
-| `listPolicyServers`          | List external policy server configurations                                                          |
-| `createPolicyServer`         | Configure an external policy server for dynamic call routing decisions                              |
-| `configureAutoBackup`        | Enable or disable automatic scheduled backups                                                       |
-| `configureSnmp`              | Configure SNMP monitoring with community string and allowed subnets                                 |
-| `configureSyslog`            | Configure remote syslog forwarding with server address, port, and transport                         |
+| Method                       | Description                                                                                                                                                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `listEventSinks`             | List configured event sinks for conference/participant event forwarding                                                                                                                                                |
+| `createEventSink`            | Create an HTTP(S) event sink with optional basic auth, TLS verification, API version, and bulk mode                                                                                                                    |
+| `deleteEventSink`            | Delete an event sink by name                                                                                                                                                                                           |
+| `listCertificates`           | List all TLS certificates on the platform                                                                                                                                                                              |
+| `uploadCertificate`          | Upload a PEM certificate with private key and optional intermediate chain                                                                                                                                              |
+| `listSipRegistrations`       | List SIP registrations (trunks to external SBC/proxy)                                                                                                                                                                  |
+| `createSipRegistration`      | Create a SIP registration with proxy address, transport protocol, and port                                                                                                                                             |
+| `listLdapSources`            | List LDAP/AD directory sources for contact sync                                                                                                                                                                        |
+| `listTeamsConnectors`        | List Microsoft Teams connector configurations                                                                                                                                                                          |
+| `syncLdap`                   | Trigger an immediate LDAP directory sync (normally runs daily at 01:00 UTC)                                                                                                                                            |
+| `listIdentityProviders`      | List SAML/OIDC identity providers for conference participant SSO                                                                                                                                                       |
+| `createIdentityProvider`     | Configure an identity provider for participant authentication                                                                                                                                                          |
+| `deleteIdentityProvider`     | Remove an identity provider configuration                                                                                                                                                                              |
+| `listIdentityProviderGroups` | List identity provider groups controlling IdP user access to services                                                                                                                                                  |
+| `listUserGroups`             | List user groups for access control                                                                                                                                                                                    |
+| `listMediaLibrary`           | List media library entries (hold music, IVR audio, playback service content)                                                                                                                                           |
+| `listPlaylists`              | List media playlists                                                                                                                                                                                                   |
+| `createPlaylist`             | Create a media playlist for playback service or IVR                                                                                                                                                                    |
+| `listBrandingPackages`       | List web app branding packages for per-client meeting experiences                                                                                                                                                      |
+| `listWebAppPaths`            | List web app path aliases (custom URLs for branded join pages)                                                                                                                                                         |
+| `createWebAppPath`           | Create a web app path alias (e.g., /meet/clientname) with optional branding                                                                                                                                            |
+| `listCsrs`                   | List certificate signing requests                                                                                                                                                                                      |
+| `createCsr`                  | Generate a CSR on the management node with common name and SANs (private key stays on-box)                                                                                                                             |
+| `listAzureTenants`           | List Azure/Entra tenant configurations for Teams CVI                                                                                                                                                                   |
+| `createAzureTenant`          | Configure an Azure/Entra tenant for Teams CVI integration                                                                                                                                                              |
+| `listTurnServers`            | List TURN server configurations for NAT traversal                                                                                                                                                                      |
+| `createTurnServer`           | Configure a TURN server with address, port, credentials, and transport protocol                                                                                                                                        |
+| `listRegisteredDevices`      | List all registered device aliases                                                                                                                                                                                     |
+| `listIvrThemes`              | List IVR themes (branding, hold music, prompts)                                                                                                                                                                        |
+| `listCaCertificates`         | List trusted CA certificates                                                                                                                                                                                           |
+| `uploadCaCertificate`        | Upload a trusted CA certificate in PEM format                                                                                                                                                                          |
+| `listPolicyServers`          | List external policy server configurations                                                                                                                                                                             |
+| `createPolicyServer`         | Configure an external policy server for dynamic call routing decisions                                                                                                                                                 |
+| `configureAutoBackup`        | Enable or disable automatic scheduled backups                                                                                                                                                                          |
+| `configureSnmp`              | Configure SNMP monitoring with community string and allowed subnets                                                                                                                                                    |
+| `configureSyslog`            | Configure remote syslog forwarding with server address, port, and transport; on v41+ optionally `protoFormat` (`pexip`, `rfc3164`, `rfc5424`) and the `auditLog` / `supportLog` / `webLog` toggles, sent only when set |
 
 ### pexip-otj (18 methods)
 
@@ -252,6 +252,11 @@ Tested against Pexip Infinity v39. The extension uses the Pexip management REST
 API (JSON over HTTPS) and handles pagination automatically on all list
 operations, so methods return complete result sets regardless of the number of
 objects.
+
+A few arguments target fields that only exist on Infinity v41 and later, such as
+`configureSyslog`'s `protoFormat`, `auditLog`, `supportLog` and `webLog`. They
+are omitted from the request unless you set them, so the same methods keep
+working against v39 nodes.
 
 The deploy model uses both the Pexip API and Azure CLI (`az`) for VM
 provisioning. VM sizes default to the Pexip v39 Azure Deployment Guide

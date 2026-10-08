@@ -118,12 +118,18 @@ async function clientApi(
  */
 export const model = {
   type: "@dougschaefer/pexip-client",
-  version: "2026.10.07.1",
+  version: "2026.10.08.1",
   upgrades: [
     {
       toVersion: "2026.10.07.1",
       description:
         "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+    {
+      toVersion: "2026.10.08.1",
+      description:
+        "Version bump alongside configureSyslog proto_format and log-category options; globalArguments unchanged",
       upgradeAttributes: (old: Record<string, unknown>) => old,
     },
   ],

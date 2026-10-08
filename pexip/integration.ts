@@ -101,14 +101,25 @@ const _SnmpSchema = z
   })
   .passthrough();
 
+/**
+ * syslog_server proto_format choices (v41+). Source:
+ * pexip/terraform-provider-infinity
+ * internal/provider/resource_infinity_syslog_server.go
+ */
+export const SYSLOG_PROTO_FORMATS = ["pexip", "rfc3164", "rfc5424"] as const;
+
 const _SyslogSchema = z
   .object({
     id: z.number().optional(),
     resource_uri: z.string().optional(),
-    server_address: z.string().optional(),
+    address: z.string().optional(),
+    description: z.string().optional(),
     port: z.number().optional(),
-    protocol: z.string().optional(),
-    enabled: z.boolean().optional(),
+    transport: z.string().optional(),
+    proto_format: z.string().optional(),
+    audit_log: z.boolean().optional(),
+    support_log: z.boolean().optional(),
+    web_log: z.boolean().optional(),
   })
   .passthrough();
 
@@ -132,12 +143,18 @@ const _SyslogSchema = z
  */
 export const model = {
   type: "@dougschaefer/pexip-integration",
-  version: "2026.10.07.1",
+  version: "2026.10.08.1",
   upgrades: [
     {
       toVersion: "2026.10.07.1",
       description:
         "Version bump alongside OTJ Regex RE2 support; globalArguments unchanged",
+      upgradeAttributes: (old: Record<string, unknown>) => old,
+    },
+    {
+      toVersion: "2026.10.08.1",
+      description:
+        "configureSyslog gains optional protoFormat and auditLog/supportLog/webLog (v41); globalArguments unchanged",
       upgradeAttributes: (old: Record<string, unknown>) => old,
     },
   ],
@@ -1038,35 +1055,96 @@ export const model = {
     // --- Syslog configuration ---
 
     configureSyslog: {
-      description: "Configure remote syslog forwarding.",
+      description:
+        "Configure remote syslog forwarding. Creates a syslog_server, or updates the existing one with the same address and port, so re-runs converge instead of duplicating.",
       arguments: z.object({
-        serverAddress: z.string().describe("Syslog server address"),
+        serverAddress: z.string().describe(
+          "Syslog server address (sent as the syslog_server `address` field)",
+        ),
         port: z.number().optional().default(514).describe("Syslog port"),
         protocol: z
           .enum(["udp", "tcp", "tls"])
           .optional()
           .default("udp")
-          .describe("Syslog transport protocol"),
-        enabled: z.boolean().optional().default(true),
+          .describe(
+            "Syslog transport (sent as the syslog_server `transport` field)",
+          ),
+        description: z.string().optional().describe(
+          "Optional description stored on the syslog_server",
+        ),
+        // v41 syslog_server fields. Names and choices from
+        // pexip/terraform-provider-infinity
+        // internal/provider/resource_infinity_syslog_server.go. Sent only
+        // when provided so the request to a v39 node is unchanged.
+        protoFormat: z
+          .enum(SYSLOG_PROTO_FORMATS)
+          .optional()
+          .describe(
+            "Syslog message format (v41+). Infinity defaults to rfc3164 when omitted.",
+          ),
+        auditLog: z
+          .boolean()
+          .optional()
+          .describe("Send audit log entries to this server (v41+)"),
+        supportLog: z
+          .boolean()
+          .optional()
+          .describe("Send support log entries to this server (v41+)"),
+        webLog: z
+          .boolean()
+          .optional()
+          .describe("Send web server log entries to this server (v41+)"),
       }),
       execute: async (args, context) => {
         const g = context.globalArgs;
+        // Field names from pexip/go-infinity-sdk
+        // config/syslog_server_model.go: address, port, transport,
+        // description. There is no `enabled` field.
         const body: Record<string, unknown> = {
-          server_address: args.serverAddress,
+          address: args.serverAddress,
           port: args.port,
-          protocol: args.protocol,
-          enabled: args.enabled,
+          transport: args.protocol,
         };
+        if (args.description !== undefined) {
+          body.description = args.description;
+        }
+        if (args.protoFormat !== undefined) {
+          body.proto_format = args.protoFormat;
+        }
+        if (args.auditLog !== undefined) body.audit_log = args.auditLog;
+        if (args.supportLog !== undefined) body.support_log = args.supportLog;
+        if (args.webLog !== undefined) body.web_log = args.webLog;
 
-        await pexipApi(`${CONFIG_BASE}/syslog_server/`, g, {
-          method: "POST",
-          body,
-        });
+        const existing = (await pexipListAll(
+          `${CONFIG_BASE}/syslog_server/`,
+          g,
+        )).find((s) =>
+          s.address === args.serverAddress && s.port === args.port
+        );
 
-        context.logger.info("Configured syslog → {server}:{port}", {
-          server: args.serverAddress,
-          port: args.port,
-        });
+        if (existing && typeof existing.resource_uri === "string") {
+          context.logger.info(
+            "Updating syslog server {server}:{port} ({uri})",
+            {
+              server: args.serverAddress,
+              port: args.port,
+              uri: existing.resource_uri,
+            },
+          );
+          await pexipApi(existing.resource_uri, g, {
+            method: "PATCH",
+            body,
+          });
+        } else {
+          context.logger.info("Creating syslog server {server}:{port}", {
+            server: args.serverAddress,
+            port: args.port,
+          });
+          await pexipApi(`${CONFIG_BASE}/syslog_server/`, g, {
+            method: "POST",
+            body,
+          });
+        }
 
         return { dataHandles: [] };
       },
